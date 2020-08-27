@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	v1 "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/gxthrj/seven/DB"
 	"github.com/gxthrj/seven/conf"
 	"github.com/gxthrj/seven/utils"
@@ -15,7 +15,7 @@ import (
 
 // FindCurrentUpstream find upstream from memDB,
 // if Not Found, find upstream from apisix
-func FindCurrentUpstream(group, name, fullName string) (*v1.Upstream, error){
+func FindCurrentUpstream(group, name, fullName string) (*v1.Upstream, error) {
 	ur := &DB.UpstreamRequest{Group: group, Name: name, FullName: fullName}
 	currentUpstream, _ := ur.FindByName()
 	if currentUpstream != nil {
@@ -25,7 +25,7 @@ func FindCurrentUpstream(group, name, fullName string) (*v1.Upstream, error){
 		if upstreams, err := ListUpstream(group); err != nil {
 			glog.Errorf("list upstreams in etcd failed, group: %s, err: %+v", group, err)
 			return nil, fmt.Errorf("list upstreams failed, err: %+v", err)
-		}else {
+		} else {
 			for _, upstream := range upstreams {
 				if upstream.Name != nil && *(upstream.Name) == name {
 					// and save to memDB
@@ -109,19 +109,24 @@ func AddUpstream(upstream *v1.Upstream) (*UpstreamResponse, error) {
 func UpdateUpstream(upstream *v1.Upstream) error {
 	baseUrl := conf.FindUrl(*upstream.Group)
 	url := fmt.Sprintf("%s/upstreams/%s", baseUrl, *upstream.ID)
-	ur := convert2UpstreamRequest(upstream)
+	ur := convert2UpstreamRequestIgnoreNodes(upstream)
 	if b, err := json.Marshal(ur); err != nil {
 		return err
 	} else {
+		//first patch bash info
 		if _, err := utils.Patch(url, b); err != nil {
 			return fmt.Errorf("http patch failed, url: %s, err: %+v", url, err)
 		} else {
+			//then patch node
+			if err := PatchNodes(upstream, upstream.Nodes); err != nil {
+				return err
+			}
 			return nil
 		}
 	}
 }
 
-func PatchNodes(upstream *v1.Upstream, nodes []*v1.Node) error{
+func PatchNodes(upstream *v1.Upstream, nodes []*v1.Node) error {
 	baseUrl := conf.FindUrl(*upstream.Group)
 	url := fmt.Sprintf("%s/upstreams/%s/nodes", baseUrl, *upstream.ID)
 	nodeMap := convertNodes(nodes)
@@ -136,8 +141,7 @@ func PatchNodes(upstream *v1.Upstream, nodes []*v1.Node) error{
 	}
 }
 
-
-func DeleteUpstream(upstream *v1.Upstream) error{
+func DeleteUpstream(upstream *v1.Upstream) error {
 	baseUrl := conf.FindUrl(*upstream.Group)
 	url := fmt.Sprintf("%s/upstreams/%s", baseUrl, *upstream.ID)
 	if _, err := utils.Delete(url); err != nil {
@@ -158,7 +162,16 @@ func convert2UpstreamRequest(upstream *v1.Upstream) *UpstreamRequest {
 	}
 }
 
-func convertNodes(nodes []*v1.Node) map[string]int64{
+func convert2UpstreamRequestIgnoreNodes(upstream *v1.Upstream) *UpstreamRequest {
+	return &UpstreamRequest{
+		LBType: *upstream.Type,
+		HashOn: upstream.HashOn,
+		Key:    upstream.Key,
+		Desc:   *upstream.Name,
+	}
+}
+
+func convertNodes(nodes []*v1.Node) map[string]int64 {
 	result := make(map[string]int64)
 	for _, u := range nodes {
 		result[*u.IP+":"+strconv.Itoa(*u.Port)] = int64(*u.Weight)
@@ -192,7 +205,7 @@ func (u *Upstream) convert(group string) (*v1.Upstream, error) {
 	}
 	// fullName
 	fullName := *name
-	if group != ""{
+	if group != "" {
 		fullName = group + "_" + *name
 	}
 	return &v1.Upstream{ID: &id, FullName: &fullName, Group: &group, Name: name, Type: LBType, Key: key, Nodes: nodes}, nil
