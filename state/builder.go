@@ -1,19 +1,18 @@
 package state
 
 import (
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/apisix"
-	"strconv"
-	"github.com/gxthrj/seven/utils"
-	"strings"
-	"github.com/gxthrj/seven/DB"
 	"github.com/golang/glog"
+	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/redynasc/seven/DB"
+	"github.com/redynasc/seven/apisix"
+	"github.com/redynasc/seven/utils"
+	"strconv"
+	"strings"
 )
-
 
 const (
 	ApisixUpstream = "ApisixUpstream"
-	WatchFromKind = "watch"
+	WatchFromKind  = "watch"
 )
 
 //// InitDB insert object into memDB first time
@@ -32,7 +31,7 @@ const (
 //}
 
 // paddingRoute padding route from memDB
-func paddingRoute(route *v1.Route, currentRoute *v1.Route){
+func paddingRoute(route *v1.Route, currentRoute *v1.Route) {
 	// padding object, just id
 	if currentRoute == nil {
 		// NOT FOUND : set Id = 0
@@ -44,7 +43,7 @@ func paddingRoute(route *v1.Route, currentRoute *v1.Route){
 }
 
 // padding service from memDB
-func paddingService(service *v1.Service, currentService *v1.Service){
+func paddingService(service *v1.Service, currentService *v1.Service) {
 	if currentService == nil {
 		id := strconv.Itoa(0)
 		service.ID = &id
@@ -54,7 +53,7 @@ func paddingService(service *v1.Service, currentService *v1.Service){
 }
 
 // paddingUpstream padding upstream from memDB
-func paddingUpstream(upstream *v1.Upstream, currentUpstream *v1.Upstream){
+func paddingUpstream(upstream *v1.Upstream, currentUpstream *v1.Upstream) {
 	// padding id
 	if currentUpstream == nil {
 		// NOT FOUND : set Id = 0
@@ -69,7 +68,7 @@ func paddingUpstream(upstream *v1.Upstream, currentUpstream *v1.Upstream){
 // NewRouteWorkers make routeWrokers group by service per CRD
 // 1.make routes group by (1_2_3) it may be a map like map[1_2_3][]Route;
 // 2.route is listenning Event from the ready of 1_2_3;
-func NewRouteWorkers(routes []*v1.Route) RouteWorkerGroup{
+func NewRouteWorkers(routes []*v1.Route) RouteWorkerGroup {
 	rwg := make(RouteWorkerGroup)
 	for _, r := range routes {
 		quit := make(chan Quit)
@@ -81,7 +80,7 @@ func NewRouteWorkers(routes []*v1.Route) RouteWorkerGroup{
 }
 
 // 3.route get the Event and trigger a padding for object,then diff,sync;
-func (r *routeWorker) trigger(event Event) error{
+func (r *routeWorker) trigger(event Event) error {
 	defer close(r.Quit)
 	// consumer Event
 	service := event.Obj.(*v1.Service)
@@ -106,7 +105,7 @@ func (r *routeWorker) trigger(event Event) error{
 }
 
 // sync
-func (r *routeWorker) sync(){
+func (r *routeWorker) sync() {
 	if *r.Route.ID != strconv.Itoa(0) {
 		// 1. sync memDB
 		db := &DB.RouteDB{Routes: []*v1.Route{r.Route}}
@@ -125,7 +124,7 @@ func (r *routeWorker) sync(){
 		} else {
 			key := res.Route.Key
 			tmp := strings.Split(*key, "/")
-			*r.ID = tmp[len(tmp) - 1]
+			*r.ID = tmp[len(tmp)-1]
 		}
 		// 2. sync memDB
 		db := &DB.RouteDB{Routes: []*v1.Route{r.Route}}
@@ -135,7 +134,7 @@ func (r *routeWorker) sync(){
 }
 
 // service
-func NewServiceWorkers(services []*v1.Service, rwg *RouteWorkerGroup) ServiceWorkerGroup{
+func NewServiceWorkers(services []*v1.Service, rwg *RouteWorkerGroup) ServiceWorkerGroup {
 	swg := make(ServiceWorkerGroup)
 	for _, s := range services {
 		quit := make(chan Quit)
@@ -147,7 +146,7 @@ func NewServiceWorkers(services []*v1.Service, rwg *RouteWorkerGroup) ServiceWor
 }
 
 // upstream
-func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup){
+func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup) {
 	for _, u := range upstreams {
 		op := Update
 		if currentUpstream, err := apisix.FindCurrentUpstream(*u.Group, *u.Name, *u.FullName); err != nil {
@@ -169,7 +168,7 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup){
 							needToUpdate = false
 						}
 					}
-					if needToUpdate{
+					if needToUpdate {
 						// 1.sync memDB
 						upstreamDB := &DB.UpstreamDB{Upstreams: []*v1.Upstream{u}}
 						if err := upstreamDB.UpdateUpstreams(); err != nil {
@@ -207,9 +206,9 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup){
 					if upstreamResponse, err := apisix.AddUpstream(u); err != nil {
 						glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
 						return
-					}else {
+					} else {
 						tmp := strings.Split(*upstreamResponse.Upstream.Key, "/")
-						*u.ID = tmp[len(tmp) - 1]
+						*u.ID = tmp[len(tmp)-1]
 					}
 					// 2.sync memDB
 					//apisix.InsertUpstreams([]*v1.Upstream{u})
@@ -221,7 +220,7 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup){
 		glog.V(2).Infof("solver upstream %s:%s", op, *u.Name)
 		// anyway, broadcast to service
 		serviceWorkers := swg[*u.Name]
-		for _, sw := range serviceWorkers{
+		for _, sw := range serviceWorkers {
 			event := &Event{Kind: UpstreamKind, Op: op, Obj: u}
 			sw.Event <- *event
 		}

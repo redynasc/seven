@@ -8,9 +8,9 @@ import (
 
 	"github.com/golang/glog"
 	v1 "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/DB"
-	"github.com/gxthrj/seven/conf"
-	"github.com/gxthrj/seven/utils"
+	"github.com/redynasc/seven/DB"
+	"github.com/redynasc/seven/conf"
+	"github.com/redynasc/seven/utils"
 )
 
 // FindCurrentUpstream find upstream from memDB,

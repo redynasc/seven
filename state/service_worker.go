@@ -1,18 +1,16 @@
 package state
 
 import (
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/golang/glog"
-	"strings"
-	"github.com/gxthrj/seven/DB"
-	"github.com/gxthrj/seven/apisix"
-	"github.com/gxthrj/seven/utils"
+	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	"github.com/redynasc/seven/DB"
+	"github.com/redynasc/seven/apisix"
+	"github.com/redynasc/seven/utils"
 	"strconv"
+	"strings"
 )
 
-
 const ApisixService = "ApisixService"
-
 
 type serviceWorker struct {
 	*v1.Service
@@ -37,6 +35,7 @@ func (w *serviceWorker) start(rwg *RouteWorkerGroup) {
 		}
 	}()
 }
+
 // trigger add to queue
 func (w *serviceWorker) trigger(event Event, rwg *RouteWorkerGroup) error {
 	glog.V(2).Infof("1.service trigger from %s, %s", event.Op, event.Kind)
@@ -98,7 +97,7 @@ func (w *serviceWorker) trigger(event Event, rwg *RouteWorkerGroup) error {
 	return nil
 }
 
-func SolverService(services []*v1.Service, rwg RouteWorkerGroup) error{
+func SolverService(services []*v1.Service, rwg RouteWorkerGroup) error {
 	for _, svc := range services {
 		op := Update
 		// padding
@@ -117,15 +116,15 @@ func SolverService(services []*v1.Service, rwg RouteWorkerGroup) error{
 				if serviceResponse, err := apisix.AddService(svc); err != nil {
 					// todo log error
 					glog.V(2).Info(err.Error())
-				}else {
+				} else {
 					tmp := strings.Split(*serviceResponse.Service.Key, "/")
-					*svc.ID = tmp[len(tmp) - 1]
+					*svc.ID = tmp[len(tmp)-1]
 				}
 				// 2. sync memDB
 				db := &DB.ServiceDB{Services: []*v1.Service{svc}}
 				db.Insert()
 				glog.V(2).Infof("create service %s, %s", *svc.Name, *svc.UpstreamId)
-			}else {
+			} else {
 				op = Update
 				needToUpdate := true
 				if currentService.FromKind != nil && *(currentService.FromKind) == ApisixService { // update from ApisixUpstream
@@ -135,7 +134,7 @@ func SolverService(services []*v1.Service, rwg RouteWorkerGroup) error{
 						needToUpdate = false
 					}
 				}
-				if needToUpdate{
+				if needToUpdate {
 					// 1. sync memDB
 					db := DB.ServiceDB{Services: []*v1.Service{svc}}
 					if err := db.UpdateService(); err != nil {
@@ -150,7 +149,7 @@ func SolverService(services []*v1.Service, rwg RouteWorkerGroup) error{
 		}
 		// broadcast to route
 		routeWorkers := rwg[*svc.Name]
-		for _, rw := range routeWorkers{
+		for _, rw := range routeWorkers {
 			event := &Event{Kind: ServiceKind, Op: op, Obj: svc}
 			glog.V(2).Infof("send event %s, %s, %s", event.Kind, event.Op, *svc.Name)
 			rw.Event <- *event

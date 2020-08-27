@@ -7,24 +7,24 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
-	"github.com/gxthrj/seven/DB"
-	"github.com/gxthrj/seven/conf"
-	"github.com/gxthrj/seven/utils"
+	"github.com/redynasc/seven/DB"
+	"github.com/redynasc/seven/conf"
+	"github.com/redynasc/seven/utils"
 )
 
 // FindCurrentService find service from memDB,
 // if Not Found, find service from apisix
-func FindCurrentService(group, name, fullName string) (*v1.Service, error){
+func FindCurrentService(group, name, fullName string) (*v1.Service, error) {
 	db := DB.ServiceRequest{Group: group, Name: name, FullName: fullName}
 	currentService, _ := db.FindByName()
 	if currentService != nil {
 		return currentService, nil
-	}else {
+	} else {
 		// find service from apisix
 		if services, err := ListService(group); err != nil {
 			glog.Errorf("list services in etcd failed, group: %s, err: %+v", group, err)
 			return nil, fmt.Errorf("list services failed, err: %+v", err)
-		}else {
+		} else {
 			for _, s := range services {
 				if s.Name != nil && *(s.Name) == name {
 					// and save to memDB
@@ -40,7 +40,7 @@ func FindCurrentService(group, name, fullName string) (*v1.Service, error){
 }
 
 // ListUpstream list upstream from etcd , convert to v1.Upstream
-func ListService (group string) ([]*v1.Service, error) {
+func ListService(group string) ([]*v1.Service, error) {
 	baseUrl := conf.FindUrl(group)
 	url := baseUrl + "/services"
 	ret, err := Get(url)
@@ -64,10 +64,10 @@ func ListService (group string) ([]*v1.Service, error) {
 }
 
 // convert convert Service from etcd to v1.Service
-func (u *Service)convert(group string) (*v1.Service, error){
+func (u *Service) convert(group string) (*v1.Service, error) {
 	// id
 	keys := strings.Split(*u.Key, "/")
-	id := keys[len(keys) - 1]
+	id := keys[len(keys)-1]
 	// Name
 	name := u.ServiceValue.Desc
 	// upstreamId
@@ -78,7 +78,7 @@ func (u *Service)convert(group string) (*v1.Service, error){
 		(*plugins)[k] = v
 	}
 	fullName := *name
-	if group != ""{
+	if group != "" {
 		fullName = group + "_" + *name
 	}
 	return &v1.Service{ID: &id, FullName: &fullName, Group: &group, Name: name, UpstreamId: upstreamId, Plugins: plugins}, nil
@@ -147,18 +147,17 @@ func convert2ServiceRequest(service *v1.Service) *ServiceRequest {
 }
 
 type ServiceRequest struct {
-	Desc       *string                `json:"desc,omitempty"`
-	UpstreamId *string                `json:"upstream_id"`
+	Desc       *string     `json:"desc,omitempty"`
+	UpstreamId *string     `json:"upstream_id"`
 	Plugins    *v1.Plugins `json:"plugins,omitempty"`
 }
-
 
 type ServicesResponse struct {
 	Services Services `json:"node"`
 }
 
-type Services struct{
-	Key string `json:"key"` // 用来定位upstreams 列表
+type Services struct {
+	Key      string    `json:"key"` // 用来定位upstreams 列表
 	Services []Service `json:"nodes"`
 }
 
