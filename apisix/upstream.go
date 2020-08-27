@@ -163,11 +163,17 @@ func convert2UpstreamRequest(upstream *v1.Upstream) *UpstreamRequest {
 }
 
 func convert2UpstreamRequestIgnoreNodes(upstream *v1.Upstream) *UpstreamRequest {
+	nodesEmpty := make(map[string]int64)
+	nodesEmpty["stub"] = int64(0)
+	delete(nodesEmpty, "stub")
+	//for construct "nodes":{}
+	//{"type":"hash","hash_on":"var","nodes":{},"desc":"cloud_httpserver_8080"}
 	return &UpstreamRequest{
 		LBType: *upstream.Type,
 		HashOn: upstream.HashOn,
 		Key:    upstream.Key,
 		Desc:   *upstream.Name,
+		Nodes:  nodesEmpty,
 	}
 }
 

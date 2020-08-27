@@ -13,6 +13,7 @@ func Test_convert2UpstreamRequestIgnoreNodes(t *testing.T) {
 	uType := "hash"
 	HashOn := "var"
 	desc := "cloud_httpserver_8080"
+
 	upstream := v1.Upstream{
 		ID:     &id,
 		Type:   &uType,
