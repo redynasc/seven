@@ -195,7 +195,7 @@ func (u *Upstream) convert(group string) (*v1.Upstream, error) {
 	// type
 	LBType := u.UpstreamNodes.LBType
 	// key
-	key := u.Key
+	key := u.UpstreamNodes.Key
 	// nodes
 	nodes := make([]*v1.Node, 0)
 	for k, v := range u.UpstreamNodes.Nodes {
@@ -238,8 +238,9 @@ type Upstream struct {
 
 type UpstreamNodes struct {
 	Nodes  map[string]int64 `json:"nodes"`
-	Desc   *string          `json:"desc"` // upstream name  = k8s svc
-	LBType *string          `json:"type"` // 负载均衡类型
+	Desc   *string          `json:"desc"`          // upstream name  = k8s svc
+	LBType *string          `json:"type"`          // 负载均衡类型
+	Key    *string          `json:"key",omitempty` // 负载均衡类型
 }
 
 //{"type":"roundrobin","nodes":{"10.244.10.11:8080":100},"desc":"somesvc"}

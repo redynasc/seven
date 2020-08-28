@@ -1,13 +1,14 @@
 package state
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/golang/glog"
-	"github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
+	v1 "github.com/gxthrj/apisix-types/pkg/apis/apisix/v1"
 	"github.com/redynasc/seven/DB"
 	"github.com/redynasc/seven/apisix"
 	"github.com/redynasc/seven/utils"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -178,7 +179,8 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup) {
 						// 2.sync apisix
 						if err = apisix.UpdateUpstream(u); err != nil {
 							glog.Errorf("solver upstream failed, update upstream to etcd failed, err: %+v", err)
-							return
+							//do not return,give a change below code to patch nodes
+							//return
 						}
 					}
 					// if fromKind == WatchFromKind
