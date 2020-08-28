@@ -174,7 +174,8 @@ func SolverUpstream(upstreams []*v1.Upstream, swg ServiceWorkerGroup) {
 						upstreamDB := &DB.UpstreamDB{Upstreams: []*v1.Upstream{u}}
 						if err := upstreamDB.UpdateUpstreams(); err != nil {
 							glog.Errorf("solver upstream failed, update upstream to local db failed, err: %s", err.Error())
-							return
+							//do not return,give a change below code to patch nodes
+							//return
 						}
 						// 2.sync apisix
 						if err = apisix.UpdateUpstream(u); err != nil {
